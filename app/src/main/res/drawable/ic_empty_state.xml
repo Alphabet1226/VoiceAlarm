@@ -1,0 +1,46 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <!-- 外层光晕背景圈 -->
+    <path
+        android:fillColor="#151A73E8"
+        android:pathData="M 48,16 A 32,32 0 1,1 47.99,16 Z" />
+    <!-- 两个铃铛耳 -->
+    <path
+        android:strokeColor="#FF1A73E8"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round"
+        android:pathData="M 31,31 L 24,38 M 65,31 L 72,38" />
+    <!-- 闹钟主体外圈 -->
+    <path
+        android:strokeColor="#FF1A73E8"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:pathData="M 48,26 A 22,22 0 1,1 47.99,26 Z" />
+    <!-- 支脚 -->
+    <path
+        android:strokeColor="#FF1A73E8"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round"
+        android:pathData="M 33,68 L 27,76 M 63,68 L 69,76" />
+    <!-- 表针 -->
+    <path
+        android:strokeColor="#FF1A73E8"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M 48,37 L 48,48 L 56,52" />
+    <!-- 声波发散装饰点和弧 -->
+    <path
+        android:strokeColor="#FF8AB4F8"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M 75,40 A 30,30 0 0,1 75,56" />
+    <path
+        android:strokeColor="#FF8AB4F8"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M 21,40 A 30,30 0 0,0 21,56" />
+</vector>

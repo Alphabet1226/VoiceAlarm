@@ -8,10 +8,6 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.media.AudioAttributes;
-import android.media.AudioManager;
-import android.media.Ringtone;
-import android.media.RingtoneManager;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
@@ -33,7 +29,6 @@ public class AlarmService extends Service implements TextToSpeech.OnInitListener
 
     private PowerManager.WakeLock wakeLock;
     private TextToSpeech tts;
-    private Ringtone ringtone;
     private Vibrator vibrator;
     private Handler handler;
     private boolean isTtsReady = false;
@@ -41,6 +36,8 @@ public class AlarmService extends Service implements TextToSpeech.OnInitListener
 
     private long currentAlarmId = -1;
     private String alarmLabel = "";
+    private int currentHour = 7;
+    private int currentMinute = 0;
 
     @Override
     public void onCreate() {
@@ -50,7 +47,7 @@ public class AlarmService extends Service implements TextToSpeech.OnInitListener
         PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
         if (pm != null) {
             wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "VoiceAlarm::WakeLock");
-            wakeLock.acquire(10 * 60 * 1000L); // 最多锁定10分钟以防万一
+            wakeLock.acquire(10 * 60 * 1000L); // 锁定唤醒，确保播报不受休眠阻断
         }
 
         vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
@@ -63,11 +60,11 @@ public class AlarmService extends Service implements TextToSpeech.OnInitListener
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID,
-                    "VoiceAlarm 报时服务",
+                    "VoiceAlarm 语音报时",
                     NotificationManager.IMPORTANCE_HIGH
             );
             channel.setDescription("用于闹钟响起时的语音播报及全屏提醒");
-            channel.setSound(null, null); // 声音由 TTS 和我们控制
+            channel.setSound(null, null); // 声音由 TTS 独占控制
             channel.enableVibration(true);
             NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm != null) {
@@ -84,7 +81,6 @@ public class AlarmService extends Service implements TextToSpeech.OnInitListener
                 stopSelf();
                 return START_NOT_STICKY;
             } else if (ACTION_SNOOZE_ALARM.equals(action)) {
-                // 贪睡5分钟
                 long alarmId = intent.getLongExtra(AlarmScheduler.EXTRA_ALARM_ID, -1);
                 snooze(alarmId);
                 stopSelf();
@@ -95,6 +91,12 @@ public class AlarmService extends Service implements TextToSpeech.OnInitListener
             AlarmItem item = AlarmStorage.findAlarm(this, currentAlarmId);
             if (item != null) {
                 alarmLabel = item.label;
+                currentHour = item.hour;
+                currentMinute = item.minute;
+            } else {
+                Calendar c = Calendar.getInstance();
+                currentHour = c.get(Calendar.HOUR_OF_DAY);
+                currentMinute = c.get(Calendar.MINUTE);
             }
         }
 
@@ -110,7 +112,6 @@ public class AlarmService extends Service implements TextToSpeech.OnInitListener
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
-        // 停止动作
         Intent stopIntent = new Intent(this, AlarmService.class);
         stopIntent.setAction(ACTION_STOP_ALARM);
         PendingIntent stopPendingIntent = PendingIntent.getService(
@@ -129,20 +130,17 @@ public class AlarmService extends Service implements TextToSpeech.OnInitListener
 
         Notification notification = builder
                 .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-                .setContentTitle("语音闹钟响铃中")
-                .setContentText(buildSpokenTimeText())
+                .setContentTitle("VoiceAlarm 语音闹钟正在响铃")
+                .setContentText(TTSPreviewHelper.buildSpokenText(currentHour, currentMinute, alarmLabel))
                 .setPriority(Notification.PRIORITY_MAX)
                 .setCategory(Notification.CATEGORY_ALARM)
                 .setFullScreenIntent(fullScreenPendingIntent, true)
                 .setContentIntent(fullScreenPendingIntent)
-                .addAction(android.R.drawable.ic_menu_close_clear_cancel, "关闭", stopPendingIntent)
+                .addAction(android.R.drawable.ic_menu_close_clear_cancel, "关闭闹钟", stopPendingIntent)
                 .setOngoing(true)
                 .build();
 
         startForeground(NOTIFICATION_ID, notification);
-
-        // 主动尝试启动全屏界面
-        startActivity(fullScreenIntent);
 
         startAlertRoutine();
 
@@ -151,22 +149,19 @@ public class AlarmService extends Service implements TextToSpeech.OnInitListener
 
     private void snooze(long alarmId) {
         AlarmItem item = AlarmStorage.findAlarm(this, alarmId);
-        if (item != null) {
-            AlarmItem snoozeItem = new AlarmItem();
-            Calendar c = Calendar.getInstance();
-            c.add(Calendar.MINUTE, 5);
-            snoozeItem.id = System.currentTimeMillis();
-            snoozeItem.hour = c.get(Calendar.HOUR_OF_DAY);
-            snoozeItem.minute = c.get(Calendar.MINUTE);
-            snoozeItem.enabled = true;
-            snoozeItem.label = item.label.isEmpty() ? "稍后提醒" : (item.label + " (稍后)");
-            snoozeItem.repeatDays = 0;
-            AlarmScheduler.scheduleAlarm(this, snoozeItem);
-        }
+        AlarmItem snoozeItem = new AlarmItem();
+        Calendar c = Calendar.getInstance();
+        c.add(Calendar.MINUTE, 5);
+        snoozeItem.id = System.currentTimeMillis();
+        snoozeItem.hour = c.get(Calendar.HOUR_OF_DAY);
+        snoozeItem.minute = c.get(Calendar.MINUTE);
+        snoozeItem.enabled = true;
+        snoozeItem.label = (item != null && !item.label.isEmpty()) ? (item.label + " (稍后)") : "稍后提醒";
+        snoozeItem.repeatDays = 0;
+        AlarmScheduler.scheduleAlarm(this, snoozeItem);
     }
 
     private void startAlertRoutine() {
-        // 1. 启动振动 (循环震动模式)
         if (vibrator != null) {
             long[] pattern = {0, 600, 400, 600, 1000};
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -176,7 +171,6 @@ public class AlarmService extends Service implements TextToSpeech.OnInitListener
             }
         }
 
-        // 2. 播报循环逻辑
         scheduleSpeechCycle();
     }
 
@@ -185,60 +179,20 @@ public class AlarmService extends Service implements TextToSpeech.OnInitListener
         if (isTtsReady) {
             speakCurrentTime();
         } else {
-            // TTS 若尚未就绪，1秒后重试
             handler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
                     scheduleSpeechCycle();
                 }
-            }, 1000);
+            }, 800);
         }
-    }
-
-    private String buildSpokenTimeText() {
-        Calendar c = Calendar.getInstance();
-        int hour = c.get(Calendar.HOUR_OF_DAY);
-        int minute = c.get(Calendar.MINUTE);
-
-        String period;
-        int displayHour = hour;
-        if (hour >= 0 && hour < 6) {
-            period = "凌晨";
-        } else if (hour < 9) {
-            period = "早上";
-        } else if (hour < 12) {
-            period = "上午";
-        } else if (hour == 12) {
-            period = "中午";
-        } else if (hour < 18) {
-            period = "下午";
-            displayHour = hour - 12;
-        } else {
-            period = "晚上";
-            displayHour = hour - 12;
-        }
-
-        StringBuilder sb = new StringBuilder();
-        sb.append("现在时间，").append(period).append(displayHour).append("点");
-        if (minute == 0) {
-            sb.append("整");
-        } else if (minute < 10) {
-            sb.append("零").append(minute).append("分");
-        } else {
-            sb.append(minute).append("分");
-        }
-
-        if (alarmLabel != null && !alarmLabel.trim().isEmpty()) {
-            sb.append("。").append(alarmLabel.trim());
-        }
-
-        return sb.toString();
     }
 
     private void speakCurrentTime() {
         if (tts == null || isDestroyed) return;
 
-        String text = buildSpokenTimeText();
+        Calendar c = Calendar.getInstance();
+        String text = TTSPreviewHelper.buildSpokenText(c.get(Calendar.HOUR_OF_DAY), c.get(Calendar.MINUTE), alarmLabel);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             AudioAttributes audioAttributes = new AudioAttributes.Builder()
@@ -251,7 +205,6 @@ public class AlarmService extends Service implements TextToSpeech.OnInitListener
             tts.speak(text, TextToSpeech.QUEUE_FLUSH, null);
         }
 
-        // 播报完毕后间隔3秒再播报一次，形成连贯温和的报时提醒
         tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
             @Override
             public void onStart(String utteranceId) {}
@@ -275,7 +228,7 @@ public class AlarmService extends Service implements TextToSpeech.OnInitListener
                     public void run() {
                         speakCurrentTime();
                     }
-                }, 4000);
+                }, 3500);
             }
         });
     }
@@ -285,11 +238,10 @@ public class AlarmService extends Service implements TextToSpeech.OnInitListener
         if (status == TextToSpeech.SUCCESS) {
             int result = tts.setLanguage(Locale.CHINESE);
             if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                // 如果中文TTS不可用，回退为系统默认语言
                 tts.setLanguage(Locale.getDefault());
             }
             tts.setPitch(1.0f);
-            tts.setSpeechRate(0.95f); // 语速微降，更加从容清晰
+            tts.setSpeechRate(0.95f);
             isTtsReady = true;
         }
     }

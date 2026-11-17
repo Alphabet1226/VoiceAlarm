@@ -1,0 +1,61 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 双耳小铃铛 -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.4"
+        android:strokeLineCap="round"
+        android:pathData="M 31.5,37.5 L 37.5,42.5 M 64.5,37.5 L 58.5,42.5" />
+
+    <!-- 底部极简支脚 -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round"
+        android:pathData="M 36,70 L 31.5,75.5 M 60,70 L 64.5,75.5" />
+
+    <!-- 闹钟圆形表盘外圈 -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.6"
+        android:strokeLineCap="round"
+        android:pathData="M 48,37 A 18,18 0 1,1 47.99,37 Z" />
+
+    <!-- 时针 (指向7点晨醒) -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.6"
+        android:strokeLineCap="round"
+        android:pathData="M 48,55 L 41.5,59.5" />
+
+    <!-- 分针 (指向12点整) -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.4"
+        android:strokeLineCap="round"
+        android:pathData="M 48,55 L 48,43" />
+
+    <!-- 表盘中心轴圆点 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 48,52.2 A 2.8,2.8 0 1,1 47.99,52.2 Z" />
+
+    <!-- 语音/声波 扩散弧线 (内层) -->
+    <path
+        android:strokeColor="#D2E3FC"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round"
+        android:pathData="M 68.5,39.0 A 26,26 0 0,1 68.5,71.0" />
+
+    <!-- 语音/声波 扩散弧线 (外层) -->
+    <path
+        android:strokeColor="#D2E3FC"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round"
+        android:pathData="M 77.1,39.5 A 33,33 0 0,1 77.1,70.5" />
+
+</vector>
